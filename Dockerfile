@@ -37,6 +37,27 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 # Install PHP dependencies (if any)
 RUN composer install --no-interaction --optimize-autoloader --no-dev || true
 
+# ✅ PHP SYNTAX CHECK - Isse pata chalega error kya hai
+RUN echo "🔍 Checking PHP syntax..." \
+    && php -l /var/www/html/index.php \
+    && php -l /var/www/html/inc/config.php \
+    && php -l /var/www/html/inc/telegram_api.php \
+    && php -l /var/www/html/inc/channel_mapping.php \
+    && php -l /var/www/html/inc/forward_header.php \
+    && php -l /var/www/html/inc/typing_indicators.php \
+    && php -l /var/www/html/inc/csv_manager.php \
+    && php -l /var/www/html/inc/search_engine.php \
+    && php -l /var/www/html/inc/movie_delivery.php \
+    && php -l /var/www/html/inc/request_system.php \
+    && php -l /var/www/html/inc/user_management.php \
+    && php -l /var/www/html/inc/category_browse.php \
+    && php -l /var/www/html/inc/backup_system.php \
+    && php -l /var/www/html/inc/channel_info.php \
+    && php -l /var/www/html/inc/admin_panel.php \
+    && php -l /var/www/html/inc/command_handlers.php \
+    && php -l /var/www/html/inc/webhook_handler.php \
+    && echo "✅ All PHP files syntax OK!"
+
 # Expose port
 EXPOSE 80
 
