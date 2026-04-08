@@ -1,0 +1,39 @@
+# Dependencies
+vendor/
+composer.phar
+composer.lock
+
+# Data files (Render pe env se manage hoga)
+movies.csv
+users.json
+bot_stats.json
+movie_requests.json
+forward_settings.json
+cache_*.json
+
+# Logs
+bot_activity.log
+*.log
+
+# Backups
+backups/
+*.bak
+*.zip
+
+# OS files
+.DS_Store
+Thumbs.db
+*.tmp
+
+# IDE
+.vscode/
+.idea/
+*.sublime-*
+
+# Environment
+.env
+.env.local
+.env.production
+
+# Composer
+composer.lock

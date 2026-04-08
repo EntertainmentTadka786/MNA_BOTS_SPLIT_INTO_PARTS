@@ -1,0 +1,12 @@
+{
+    "name": "entertainment-tadka/bot",
+    "description": "Telegram Movie Bot - Entertainment Tadka",
+    "type": "project",
+    "require": {
+        "php": ">=8.0"
+    },
+    "config": {
+        "platform-check": false,
+        "optimize-autoloader": true
+    }
+}

@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  bot:
+    build: .
+    container_name: entertainment-tadka-bot
+    ports:
+      - "8080:80"
+    environment:
+      - BOT_TOKEN=${BOT_TOKEN}
+      - ADMIN_ID=${ADMIN_ID}
+    volumes:
+      - ./backups:/var/www/html/backups
+      - ./movies.csv:/var/www/html/movies.csv
+      - ./users.json:/var/www/html/users.json
+      - ./bot_stats.json:/var/www/html/bot_stats.json
+      - ./movie_requests.json:/var/www/html/movie_requests.json
+      - ./forward_settings.json:/var/www/html/forward_settings.json
+      - ./bot_activity.log:/var/www/html/bot_activity.log
+    restart: unless-stopped

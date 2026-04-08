@@ -1,0 +1,39 @@
+# Enable Rewrite Engine
+RewriteEngine On
+
+# Security Headers
+Header set X-Content-Type-Options "nosniff"
+Header set X-Frame-Options "DENY"
+Header set X-XSS-Protection "1; mode=block"
+Header set Referrer-Policy "strict-origin-when-cross-origin"
+
+# Prevent directory listing
+Options -Indexes
+
+# Block access to sensitive files
+<FilesMatch "\.(json|log|csv|txt|bak|zip)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Block access to .env files
+<FilesMatch "^\.env">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Block access to backup directory
+RedirectMatch 403 ^/backups/.*$
+
+# Set default charset
+AddDefaultCharset UTF-8
+
+# PHP settings
+php_value upload_max_filesize 50M
+php_value post_max_size 50M
+php_value max_execution_time 300
+php_value memory_limit 256M
+
+# Force HTTPS (uncomment if needed)
+# RewriteCond %{HTTPS} off
+# RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]

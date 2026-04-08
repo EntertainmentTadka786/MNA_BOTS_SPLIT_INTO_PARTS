@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: entertainment-tadka-bot
+    runtime: image
+    repo: https://github.com/yourusername/entertainment-tadka-bot
+    plan: free
+    envVars:
+      - key: BOT_TOKEN
+        sync: false
+      - key: ADMIN_ID
+        sync: false
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /
+    autoDeploy: true
+    domains:
+      - entertainment-tadka-bot.onrender.com
