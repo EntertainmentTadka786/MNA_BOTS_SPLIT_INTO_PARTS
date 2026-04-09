@@ -142,6 +142,38 @@ function process_webhook_update($update) {
             
             handle_admin_callback($chat_id, $user_id, $data, $query['id']);
         }
+        // Search pagination callbacks
+        elseif (strpos($data, 'search_next_') === 0) {
+            $parts = explode('_', $data);
+            $query_param = urldecode($parts[2]);
+            $current_page = intval($parts[3]);
+            $next_page = $current_page + 1;
+            
+            $found = smart_search(strtolower(trim($query_param)));
+            $total_pages = ceil(count($found) / 5);
+            
+            if ($next_page <= $total_pages) {
+                send_search_results_page($chat_id, $query_param, $found, $next_page);
+                answerCallbackQuery($query['id'], "Page $next_page");
+            } else {
+                answerCallbackQuery($query['id'], "Last page", true);
+            }
+        }
+        elseif (strpos($data, 'search_prev_') === 0) {
+            $parts = explode('_', $data);
+            $query_param = urldecode($parts[2]);
+            $current_page = intval($parts[3]);
+            $prev_page = max(1, $current_page - 1);
+            
+            $found = smart_search(strtolower(trim($query_param)));
+            
+            if ($prev_page >= 1) {
+                send_search_results_page($chat_id, $query_param, $found, $prev_page);
+                answerCallbackQuery($query['id'], "Page $prev_page");
+            } else {
+                answerCallbackQuery($query['id'], "First page", true);
+            }
+        }
         // Command buttons
         elseif ($data == 'cmd_browse') {
             show_category_menu($chat_id);
