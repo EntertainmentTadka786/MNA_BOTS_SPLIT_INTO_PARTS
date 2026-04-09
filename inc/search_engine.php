@@ -40,6 +40,8 @@ function smart_search($query) {
                 'score' => $score,
                 'count' => count($entries),
                 'latest_entry' => end($entries),
+                'qualities' => array_unique(array_column($entries, 'quality')),
+                'has_theater' => in_array('theater', $channel_types),
                 'has_main' => in_array('main', $channel_types),
                 'has_serial' => in_array('serial', $channel_types),
                 'has_backup' => in_array('backup', $channel_types),
@@ -118,6 +120,82 @@ function clean_movie_name($text) {
     return $text;
 }
 
+function send_search_results_page($chat_id, $query, $found, $page = 1) {
+    $results_per_page = 5;
+    $results_array = array_values($found);
+    $total_results = count($results_array);
+    $total_pages = ceil($total_results / $results_per_page);
+    $start = ($page - 1) * $results_per_page;
+    $page_results = array_slice($results_array, $start, $results_per_page);
+    
+    $msg = "🎬 <b>RESULTS FOR \"" . htmlspecialchars(strtoupper($query)) . "\"</b>\n";
+    $msg .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n";
+    
+    foreach ($page_results as $item) {
+        $movie = $item['movie_name'] ?? key($item);
+        if (is_array($item) && isset($item['movie_name'])) {
+            $movie = $item['movie_name'];
+            $data = $item;
+        } else {
+            $data = $found[$movie];
+        }
+        
+        $quality = 'HD';
+        if (!empty($data['qualities'])) {
+            $qualities_array = array_values($data['qualities']);
+            $quality = $qualities_array[0] ?? 'HD';
+        }
+        
+        $channel_icon = '🍿';
+        if ($data['has_serial']) $channel_icon = '📺';
+        elseif ($data['has_backup']) $channel_icon = '🔒';
+        elseif ($data['has_private']) $channel_icon = '🔐';
+        elseif ($data['has_theater']) $channel_icon = '🎭';
+        
+        $channel_name = 'Main Channel';
+        if ($data['has_serial']) $channel_name = 'Serial Channel';
+        elseif ($data['has_backup']) $channel_name = 'Backup';
+        elseif ($data['has_private']) $channel_name = 'Private';
+        elseif ($data['has_theater']) $channel_name = 'Theater';
+        
+        preg_match('/\b(19|20)\d{2}\b/', $movie, $year_match);
+        $year = $year_match[0] ?? 'N/A';
+        
+        $size = $data['latest_entry']['size'] ?? '—';
+        if ($size == 'Unknown' || empty($size)) {
+            $size = '—';
+        }
+        
+        $language = $data['latest_entry']['language'] ?? 'Hindi';
+        
+        $msg .= "┌─────────────────────────────────────────────┐\n";
+        $msg .= "│ $channel_icon <b>" . htmlspecialchars($movie) . "</b>\n";
+        $msg .= "│ $channel_icon $channel_name  •  ⭐ $quality\n";
+        $msg .= "│ 🗣️ $language  •  💾 $size  •  📅 $year\n";
+        $msg .= "│ ┌─────────┐                                 \n";
+        $msg .= "│ │ <b>📥 GET</b>  │                                 \n";
+        $msg .= "│ └─────────┘                                 \n";
+        $msg .= "└─────────────────────────────────────────────┘\n\n";
+    }
+    
+    $msg .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+    
+    $keyboard = [
+        'inline_keyboard' => [
+            [
+                ['text' => '◀️ PREV', 'callback_data' => 'search_prev_' . urlencode($query) . '_' . $page],
+                ['text' => 'Page ' . $page . '/' . $total_pages, 'callback_data' => 'noop'],
+                ['text' => 'NEXT ▶️', 'callback_data' => 'search_next_' . urlencode($query) . '_' . $page]
+            ],
+            [
+                ['text' => '📝 REQUEST MOVIE', 'callback_data' => 'auto_request_' . base64_encode($query)]
+            ]
+        ]
+    ];
+    
+    sendMessage($chat_id, $msg, $keyboard, 'HTML');
+}
+
 function advanced_search($chat_id, $query, $user_id = null) {
     global $movie_messages;
     $q = strtolower(trim($query));
@@ -176,57 +254,31 @@ function advanced_search($chat_id, $query, $user_id = null) {
     
     if (!empty($found)) {
         update_stats('successful_searches', 1);
-        
-        $msg = "🔍 Found " . count($found) . " movies for '$query':\n\n";
-        $i = 1;
-        foreach ($found as $movie => $data) {
-            $channel_info = "";
-            if ($data['has_main']) $channel_info .= "🍿 ";
-            if ($data['has_serial']) $channel_info .= "📺 ";
-            if ($data['has_backup']) $channel_info .= "🔒 ";
-            if ($data['has_private']) $channel_info .= "🔐 ";
-            $msg .= "$i. $movie ($channel_info" . $data['count'] . " versions)\n";
-            $i++;
-            if ($i > 10) break;
-        }
-        
-        sendMessage($chat_id, $msg);
-        
-        $keyboard = ['inline_keyboard' => []];
-        $top_movies = array_slice(array_keys($found), 0, 5);
-        
-        foreach ($top_movies as $movie) {
-            $movie_data = $found[$movie];
-            $channel_icon = '🍿';
-            if ($movie_data['has_serial']) $channel_icon = '📺';
-            elseif ($movie_data['has_backup']) $channel_icon = '🔒';
-            elseif ($movie_data['has_private']) $channel_icon = '🔐';
-            
-            $keyboard['inline_keyboard'][] = [[ 
-                'text' => $channel_icon . ucwords($movie), 
-                'callback_data' => $movie 
-            ]];
-        }
-        
-        $keyboard['inline_keyboard'][] = [[
-            'text' => "📝 Request Different Movie", 
-            'callback_data' => 'request_movie'
-        ]];
-        
-        sendMessage($chat_id, "🚀 Top matches (click for info):", $keyboard);
-        
+        send_search_results_page($chat_id, $query, $found, 1);
     } else {
         update_stats('failed_searches', 1);
         $lang = detect_language($query);
-        send_multilingual_response($chat_id, 'not_found', $lang);
+        
+        $not_found_msg = "😔 <b>NO RESULTS FOUND FOR \"" . htmlspecialchars(strtoupper($query)) . "\"</b>\n\n";
+        $not_found_msg .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n";
+        $not_found_msg .= "┌─────────────────────────────────────────────┐\n";
+        $not_found_msg .= "│ ❌ This movie isn't available yet!           │\n";
+        $not_found_msg .= "│                                             │\n";
+        $not_found_msg .= "│ 💡 <b>What you can do:</b>                    │\n";
+        $not_found_msg .= "│                                             │\n";
+        $not_found_msg .= "│ 📝 Request the movie using button below     │\n";
+        $not_found_msg .= "│ 🔍 Check spelling and try again             │\n";
+        $not_found_msg .= "│ 📢 Join @EntertainmentTadka7860 for support │\n";
+        $not_found_msg .= "└─────────────────────────────────────────────┘\n\n";
+        $not_found_msg .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━";
         
         $request_keyboard = [
             'inline_keyboard' => [[
-                ['text' => '📝 Request This Movie', 'callback_data' => 'auto_request_' . base64_encode($query)]
+                ['text' => '📝 REQUEST THIS MOVIE', 'callback_data' => 'auto_request_' . base64_encode($query)]
             ]]
         ];
         
-        sendMessage($chat_id, "💡 Click below to automatically request this movie:", $request_keyboard);
+        sendMessage($chat_id, $not_found_msg, $request_keyboard, 'HTML');
     }
     
     update_stats('total_searches', 1);
